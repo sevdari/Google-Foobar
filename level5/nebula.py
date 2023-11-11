@@ -1,56 +1,56 @@
 
-g = [[True, False, True], [False, True, False], [True, False, True]]
-g2 = [[True, True, False, True, False, True, False, True, True, False], [True, True, False, False, False, False, True, True, True, False], [True, True, False, False, False, False, False, False, False, True], [False, True, False, False, False, False, True, True, False, False]]
-g3 = [[True, False, True, False, False, True, True, True], [True, False, True, False, False, False, True, False], [True, True, True, False, False, False, True, False], [True, False, True, False, False, False, True, False], [True, False, True, False, False, True, True, True]]
-
 def solution(g):
+    """
+    This solution does a left swipe through the columns of the grid by
+    using dynamic programming and memoization.
+    At each column we ask the question:
+    Given a certain permutation and restricting the grid to the 
+    previous columns and the current column, how many solutions are there 
+    such that the current column is filled like the permutation?
+    """
+
     def permute(n):
+        # Returns all permutations of length n where each element is either 0 or 1.
         if n == 1:
             return [[0], [1]]
         else:
             return [[0] + x for x in permute(n-1)] + [[1] + x for x in permute(n-1)]
     
-    def count_neighbors(cell, grid):
-        moves = [(0, 0), (0, 1), (1, 0), (1, 1)]
-        count = 0
-        for i, j in moves:
-            count += grid[cell[0]+i][cell[1]+j]
-        return count
-
-
-    def check(perm1, perm2, col):
-        temp = []
-        for i in range(len(perm1)):
-            temp.append([perm1[i], perm2[i]])
-        for i in range(len(temp)-1):
-            if  count_neighbors((i, 0), temp) == 1:
-                if g[i][col] == False:
-                    return False
-            else:
-                if g[i][col] == True:
-                    return False
-        return True
-
-    def check_single(perm, col):
-        for i in range(len(perm)-1):
-            if g[i][col] == True and perm[i] == 1 and perm[i+1] == 1:
-                return False
-        return True
+    def generate_column(perm1, perm2):
+        # Generates a column given two permutations based on the rules of the game.
+        column = []
+        for i in range(len(perm1)-1):
+            current_sum = perm1[i] + perm2[i] + perm1[i+1] + perm2[i+1]
+            column.append(True if current_sum == 1 else False)
+        return tuple(column)
     
-
-    permutations = permute(len(g)+1)
+    # auxillary data structures
+    rows = len(g) + 1
+    permutations = permute(rows)
+    columns, column_generated_from = [], {}
     current, past = [0 for _ in range(len(permutations))], [1 for _ in range(len(permutations))]
+    for col in range(len(g[0])):
+        current_column = tuple([g[i][col] for i in range(len(g))])
+        columns.append(current_column)
+        column_generated_from[current_column] = []
     
-    for col in range(len(g[0])-1, -1, -1):
-        for i in range(len(permutations)):
-            for j in range(len(permutations)):
-                if not check_single(permutations[i], col):
-                    continue
-                if check(permutations[i], permutations[j], col):
-                    current[i] += past[j]
+    # from which permutations can a column be generated
+    for i in range(len(permutations)):
+        for j in range(len(permutations)):
+            column = generate_column(permutations[i], permutations[j])
+            if column not in column_generated_from:
+                continue
+            column_generated_from[column].append((i, j))
+    
+    # dynamic programming left swipe through the grid
+    for col in range(len(columns)-1, -1, -1):
+        current_column = columns[col]
+        for i, j in column_generated_from[current_column]:
+            current[i] += past[j]
         past = current
         current = [0 for _ in range(len(permutations))]
     
     return sum(past)
 
-solution(g), solution(g2), solution(g3) # (4, 11567, 254)
+if __name__ == "__main__":
+    solution(g), solution(g2), solution(g3) # (4, 11567, 254)
